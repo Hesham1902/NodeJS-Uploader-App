@@ -2,23 +2,39 @@ const net = require("net");
 const fs = require("node:fs/promises");
 
 const server = net.createServer();
-
-let fileHandle, fileStream;
+let fileHandle, fileWriteStream;
 
 server.on("connection", (socket) => {
   console.log("A new connection has been established");
 
   socket.on("data", async (data) => {
-    fileHandle = await fs.open("./storage/test.txt", "w");
-    fileStream = fileHandle.createWriteStream();
+    // back-pressure issue
+    if (!fileHandle) {
+      socket.pause();
+      fileHandle = await fs.open("./storage/test.txt", "w");
+      fileWriteStream = fileHandle.createWriteStream();
+      fileWriteStream.write(data);
 
-    // Writing to our destination file
-    fileStream.write(data);
+      fileWriteStream.on("error", (err) => {
+        console.log(err);
+      });
+      socket.resume();
+
+      fileWriteStream.on("drain", () => {
+        socket.resume();
+      });
+    } else {
+      if (!fileWriteStream.write(data)) {
+        socket.pause();
+      }
+    }
   });
 
   socket.on("end", () => {
     console.log("Connection ended !");
     fileHandle.close();
+    fileHandle = undefined;
+    fileWriteStream = undefined;
   });
 });
 

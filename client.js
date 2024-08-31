@@ -7,18 +7,22 @@ const HOST = "::1";
 const socket = net.createConnection({ port: PORT, host: HOST }, async () => {
   console.log("Connected to server");
 
-  const fileHandle = await fs.open("./text.txt", "r");
-  const fileStream = fileHandle.createReadStream();
+  const fileHandle = await fs.open("./text-gigantic.txt", "r");
+  const fileReadStream = fileHandle.createReadStream();
 
-  fileStream.on("data", (data) => {
-    socket.write(data);
+  fileReadStream.on("data", (data) => {
+    if (!socket.write(data)) {
+      fileReadStream.pause();
+    }
   });
 
-  fileStream.on("end", () => {
+  socket.on("drain", () => {
+    fileReadStream.resume();
+  });
+
+  fileReadStream.on("end", () => {
     console.log("The File was successfully uploaded.");
     socket.end();
     fileHandle.close();
   });
 });
-
-socket.on("data", (data) => {});
