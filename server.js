@@ -8,12 +8,17 @@ server.on("connection", (socket) => {
   console.log("A new connection has been established");
 
   socket.on("data", async (data) => {
-    // back-pressure issue
     if (!fileHandle) {
       socket.pause();
-      fileHandle = await fs.open("./storage/test.txt", "w");
+
+      const indexOfDivider = data.indexOf("--");
+      const fileName = data.subarray(10, indexOfDivider).toString("utf-8");
+
+      fileHandle = await fs.open(`./storage/${fileName}`, "w");
       fileWriteStream = fileHandle.createWriteStream();
-      fileWriteStream.write(data);
+
+      // Write to our destination file
+      fileWriteStream.write(data.subarray(indexOfDivider + 2));
 
       fileWriteStream.on("error", (err) => {
         console.log(err);
