@@ -13,12 +13,25 @@ const socket = net.createConnection({ port: PORT, host: HOST }, async () => {
 
   const fileHandle = await fs.open(filePath, "r");
   const fileReadStream = fileHandle.createReadStream();
+  // const fileSize = (await fs.stat(filePath)).size;
+  const fileSize = (await fileHandle.stat()).size;
+
+  let bytesUploaded = 0;
+  let uploadPercentage = 0;
 
   socket.write(`fileName: ${fileName}--`);
 
   fileReadStream.on("data", (data) => {
     if (!socket.write(data)) {
       fileReadStream.pause();
+    }
+
+    bytesUploaded += data.length;
+    let newPercentage = Math.floor((bytesUploaded / fileSize) * 100);
+    if (newPercentage !== uploadPercentage) {
+      uploadPercentage = newPercentage;
+      // console.log(`Uploading... ${uploadPercentage}%`);
+      process.stdout.write(`\rUploading... ${uploadPercentage}%`);
     }
   });
 
@@ -27,7 +40,7 @@ const socket = net.createConnection({ port: PORT, host: HOST }, async () => {
   });
 
   fileReadStream.on("end", () => {
-    console.log("The File was successfully uploaded.");
+    console.log("\rThe File was successfully uploaded.");
     socket.end();
     fileHandle.close();
   });

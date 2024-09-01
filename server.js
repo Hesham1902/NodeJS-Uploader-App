@@ -17,7 +17,7 @@ server.on("connection", (socket) => {
       fileHandle = await fs.open(`./storage/${fileName}`, "w");
       fileWriteStream = fileHandle.createWriteStream();
 
-      // Write to our destination file
+      // Write to our destination file , discard the headers.
       fileWriteStream.write(data.subarray(indexOfDivider + 2));
 
       fileWriteStream.on("error", (err) => {
